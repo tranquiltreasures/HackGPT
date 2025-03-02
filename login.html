@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HackGPT Chat Interface - Access Control</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+
+        body {
+            background-color: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 500px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            text-align: center;
+        }
+
+        .logo {
+            margin-bottom: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .login-form {
+            margin-top: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        button {
+            background-color: #4285f4;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            width: 100%;
+        }
+
+        button:hover {
+            background-color: #3367d6;
+        }
+
+        .error-message {
+            color: #d93025;
+            margin-top: 15px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .countdown {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #555;
+        }
+
+        /* Main chat interface styles (hidden initially) */
+        #chat-interface {
+            display: none;
+            width: 100%;
+        }
+
+        .chat-header {
+            margin-bottom: 20px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .time-remaining {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .logout-btn {
+            background-color: transparent;
+            color: #d93025;
+            border: 1px solid #d93025;
+            padding: 5px 10px;
+            width: auto;
+        }
+
+        .logout-btn:hover {
+            background-color: #fff0f0;
+        }
+
+        #go-to-chat-btn {
+            background-color: #4CAF50; /* Green color */
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        #go-to-chat-btn:hover {
+            background-color: #45a049;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Login Section -->
+        <div id="login-section">
+            <div class="logo">HackGPT Chat Interface</div>
+            <p>Enter your access key to continue</p>
+
+            <div class="login-form">
+                <div class="form-group">
+                    <label for="access-key">Access Key</label>
+                    <input type="text" id="access-key" placeholder="Enter your access key">
+                </div>
+                <button id="access-btn">Access Chat</button>
+                <button id="go-to-chat-btn" style="display: none;">Go to Chat</button>
+                <div id="error-message" class="error-message">Invalid or expired access key.</div>
+            </div>
+        </div>
+
+        <!-- Chat Interface Section (Hidden initially) -->
+        <div id="chat-interface">
+            <div class="chat-header">
+                <div class="logo">HackGPT Chat Interface</div>
+                <div class="time-remaining" id="time-remaining"></div>
+            </div>
+
+            <button class="logout-btn" id="logout-btn">Logout</button>
+
+            <div class="chat-content">
+                <p>Welcome to HackGPT Chat Interface!</p>
+                <p>Your access is now active.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sample access keys with expiration dates (you would manage these on your server)
+        // Format: { key: expiration date in milliseconds }
+        const validKeys = {
+            "DEMO123": Date.now() + (7 * 24 * 60 * 60 * 1000), // 7 days from now
+            "TEST456": Date.now() + (30 * 24 * 60 * 60 * 1000), // 30 days from now
+            "TRIAL789": Date.now() + (3 * 24 * 60 * 60 * 1000) // 3 days from now
+        };
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const accessBtn = document.getElementById('access-btn');
+            const accessKeyInput = document.getElementById('access-key');
+            const errorMessage = document.getElementById('error-message');
+            const loginSection = document.getElementById('login-section');
+            const chatInterface = document.getElementById('chat-interface');
+            const timeRemaining = document.getElementById('time-remaining');
+            const logoutBtn = document.getElementById('logout-btn');
+            const goToPropsBtn = document.getElementById('go-to-chat-btn');
+
+            // Check if user is already authenticated
+            checkAuthentication();
+
+            // Login button click event
+            accessBtn.addEventListener('click', function() {
+                validateAccessKey();
+            });
+
+            // Allow Enter key to submit
+            accessKeyInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    validateAccessKey();
+                }
+            });
+
+            // Logout button click event
+            logoutBtn.addEventListener('click', function() {
+                localStorage.removeItem('chatAccessKey');
+                localStorage.removeItem('chatExpiryTime');
+                loginSection.style.display = 'block';
+                chatInterface.style.display = 'none';
+                goToPropsBtn.style.display = 'none';
+            });
+
+            // Go to Chat button click event
+            goToPropsBtn.addEventListener('click', function() {
+                loginSection.style.display = 'none';
+                chatInterface.style.display = 'block';
+            });
+
+            function validateAccessKey() {
+                const key = accessKeyInput.value.trim();
+
+                if (validKeys.hasOwnProperty(key)) {
+                    const expiryTime = validKeys[key];
+
+                    if (expiryTime > Date.now()) {
+                        // Valid key that hasn't expired
+                        grantAccess(key, expiryTime);
+                    } else {
+                        // Key has expired
+                        showError("This access key has expired.");
+                    }
+                } else {
+                    // Invalid key
+                    showError("Invalid access key. Please check and try again.");
+                }
+            }
+
+            function grantAccess(key, expiryTime) {
+                // Save authentication info to localStorage
+                localStorage.setItem('chatAccessKey', key);
+                localStorage.setItem('chatExpiryTime', expiryTime);
+
+                // Show chat interface and Go to Chat button
+                loginSection.style.display = 'none';
+                chatInterface.style.display = 'block';
+                goToPropsBtn.style.display = 'block';
+
+                // Update time remaining
+                updateTimeRemaining(expiryTime);
+
+                // Start countdown timer
+                setInterval(function() {
+                    updateTimeRemaining(expiryTime);
+                }, 60000); // Update every minute
+            }
+
+            function checkAuthentication() {
+                const savedKey = localStorage.getItem('chatAccessKey');
+                const savedExpiryTime = localStorage.getItem('chatExpiryTime');
+
+                if (savedKey && savedExpiryTime) {
+                    // Check if still valid
+                    if (parseInt(savedExpiryTime) > Date.now()) {
+                        // Still valid, show chat interface
+                        loginSection.style.display = 'none';
+                        chatInterface.style.display = 'block';
+
+                        // Update time remaining
+                        updateTimeRemaining(parseInt(savedExpiryTime));
+
+                        // Start countdown timer
+                        setInterval(function() {
+                            updateTimeRemaining(parseInt(savedExpiryTime));
+                        }, 60000); // Update every minute
+                    } else {
+                        // Expired, remove saved data
+                        localStorage.removeItem('chatAccessKey');
+                        localStorage.removeItem('chatExpiryTime');
+                    }
+                }
+            }
+
+            function updateTimeRemaining(expiryTime) {
+                const now = Date.now();
+                const timeLeft = expiryTime - now;
+
+                if (timeLeft <= 0) {
+                    // Access has expired
+                    localStorage.removeItem('chatAccessKey');
+                    localStorage.removeItem('chatExpiryTime');
+                    loginSection.style.display = 'block';
+                    chatInterface.style.display = 'none';
+                    goToPropsBtn.style.display = 'none';
+                    showError("Your access has expired.");
+                    return;
+                }
+
+                // Calculate days, hours, minutes
+                const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+
+                // Display time remaining
+                timeRemaining.textContent = `Access expires in: ${days}d ${hours}h ${minutes}m`;
+            }
+
+            function showError(message) {
+                errorMessage.textContent = message;
+                errorMessage.style.display = 'block';
+                setTimeout(() => {
+                    errorMessage.style.display = 'none';
+                }, 5000);
+            }
+        });
+    </script>
+</body>
+</html>
