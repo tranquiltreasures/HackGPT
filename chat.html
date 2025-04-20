@@ -1,0 +1,61 @@
+<!-- chat.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>HackGPT - Chat</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.0/styles/default.min.css">
+</head>
+<body>
+    <div class="chat-container">
+        <div id="chatOutput" class="chat-output"></div>
+        <div class="input-area">
+            <textarea id="userInput" placeholder="Type your message..."></textarea>
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.0/highlight.min.js"></script>
+    
+    <script>
+        // Markdown configuration
+        marked.setOptions({
+            highlight: (code, lang) => hljs.highlightAuto(code).value,
+            breaks: true
+        });
+
+        // Modified chat functions
+        function appendMessage(isUser, message) {
+            const formatted = marked.parse(message);
+            const msgDiv = document.createElement('div');
+            msgDiv.className = isUser ? 'user-message' : 'bot-message';
+            msgDiv.innerHTML = formatted;
+            document.getElementById('chatOutput').appendChild(msgDiv);
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('userInput').value;
+            appendMessage(true, input);
+            
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('sessionToken')}`
+                    },
+                    body: JSON.stringify({ message: input })
+                });
+                
+                const data = await response.json();
+                appendMessage(false, data.reply);
+            } catch (error) {
+                appendMessage(false, '**Error:** Could not connect to the API');
+            }
+            
+            document.getElementById('userInput').value = '';
+        }
+    </script>
+</body>
+</html>
