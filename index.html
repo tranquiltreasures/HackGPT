@@ -1,302 +1,61 @@
+<!-- chat.html -->
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HackGPT Chat Interface</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background: #f5f5f5;
-        }
-
-        .chat-container {
-            max-width: 800px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-
-        .chat-header {
-            padding: 20px;
-            border-bottom: 1px solid #eee;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #fff;
-        }
-
-        .logo {
-            font-size: 24px;
-            font-weight: bold;
-            color: #333;
-        }
-
-        .logout-btn {
-            background-color: transparent;
-            color: #d93025;
-            border: 1px solid #d93025;
-            padding: 5px 10px;
-            width: auto;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-
-        .logout-btn:hover {
-            background-color: #fff0f0;
-        }
-
-        .chat-messages {
-            padding: 20px;
-            height: 500px;
-            overflow-y: auto;
-        }
-
-        .message {
-            margin-bottom: 20px;
-            padding: 15px;
-            border-radius: 15px;
-            max-width: 70%;
-            word-wrap: break-word;
-        }
-
-        .user-message {
-            background: #4285f4;
-            color: white;
-            margin-left: auto;
-        }
-
-        .bot-message {
-            background: #e9ecef;
-            color: #333;
-        }
-
-        .typing-indicator {
-            padding: 10px 15px;
-            background: #e9ecef;
-            color: #333;
-            border-radius: 15px;
-            max-width: 70px;
-            display: none;
-        }
-
-        .typing-indicator span {
-            animation: wave 1.3s linear infinite;
-        }
-
-        .typing-indicator span:nth-child(2) {
-            animation-delay: 0.2s;
-        }
-
-        .typing-indicator span:nth-child(3) {
-            animation-delay: 0.4s;
-        }
-
-        @keyframes wave {
-            0%, 60%, 100% { transform: translateY(0); }
-            30% { transform: translateY(-4px); }
-        }
-
-        .input-container {
-            padding: 20px;
-            border-top: 1px solid #eee;
-            display: flex;
-            gap: 10px;
-            background: #fff;
-        }
-
-        #message-input {
-            flex: 1;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            outline: none;
-            font-size: 16px;
-            resize: none;
-        }
-
-        #send-button {
-            padding: 12px 20px;
-            background: #4285f4;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-
-        #send-button:hover {
-            background: #3367d6;
-        }
-
-        #send-button:disabled {
-            background: #cccccc;
-            cursor: not-allowed;
-        }
-
-        .error-message {
-            color: #d93025;
-            padding: 10px;
-            margin-top: 10px;
-            font-size: 14px;
-            display: none;
-        }
-
-        .countdown {
-            margin-top: 20px;
-            font-size: 14px;
-            color: #666;
-        }
-
-        .powered-by {
-            text-align: center;
-            padding: 10px;
-            color: #666;
-            font-size: 14px;
-        }
-    </style>
+    <title>HackGPT - Chat</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.0/styles/default.min.css">
 </head>
 <body>
     <div class="chat-container">
-        <div class="chat-header">
-            <div class="logo">HackGPT Chat Interface</div>
-            <button class="logout-btn" id="logout-btn">Logout</button>
+        <div id="chatOutput" class="chat-output"></div>
+        <div class="input-area">
+            <textarea id="userInput" placeholder="Type your message..."></textarea>
+            <button onclick="sendMessage()">Send</button>
         </div>
-        <div class="chat-messages" id="chat-messages">
-            <div class="typing-indicator" id="typing-indicator">
-                <span>.</span><span>.</span><span>.</span>
-            </div>
-        </div>
-        <div class="input-container">
-            <textarea id="message-input" placeholder="Type your message..." rows="2"></textarea>
-            <button id="send-button">Send</button>
-        </div>
-        <div class="error-message" id="error-message"></div>
-        <div class="countdown" id="countdown"></div>
-        <div class="powered-by">Powered by DeepSeek-R1</div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.0/highlight.min.js"></script>
+    
     <script>
-        const API_KEY = '02684c24-d968-46df-b2a6-fc92d92b4c41';
-        const BASE_URL = 'https://nano-gpt.com/api/v1';
-        const MODEL = 'huihui-ai/DeepSeek-R1-Distill-Llama-70B-abliterated';
+        // Markdown configuration
+        marked.setOptions({
+            highlight: (code, lang) => hljs.highlightAuto(code).value,
+            breaks: true
+        });
 
-        const messagesContainer = document.getElementById('chat-messages');
-        const messageInput = document.getElementById('message-input');
-        const sendButton = document.getElementById('send-button');
-        const typingIndicator = document.getElementById('typing-indicator');
-        const errorMessage = document.getElementById('error-message');
-        const countdown = document.getElementById('countdown');
-        const logoutBtn = document.getElementById('logout-btn');
-
-        let conversationHistory = [];
-        let isProcessing = false;
-
-        function showTypingIndicator() {
-            typingIndicator.style.display = 'block';
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        }
-
-        function hideTypingIndicator() {
-            typingIndicator.style.display = 'none';
-        }
-
-        function addMessage(content, isUser) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
-            messageDiv.innerHTML = content.replace(/\n/g, '<br>'); // Preserve line breaks
-            messagesContainer.insertBefore(messageDiv, typingIndicator);
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        // Modified chat functions
+        function appendMessage(isUser, message) {
+            const formatted = marked.parse(message);
+            const msgDiv = document.createElement('div');
+            msgDiv.className = isUser ? 'user-message' : 'bot-message';
+            msgDiv.innerHTML = formatted;
+            document.getElementById('chatOutput').appendChild(msgDiv);
         }
 
         async function sendMessage() {
-            const message = messageInput.value.trim();
-            if (!message || isProcessing) return;
-
-            isProcessing = true;
-            sendButton.disabled = true;
-            messageInput.value = '';
-
-            // Add user message to chat
-            addMessage(message, true);
-
-            // Add message to conversation history
-            conversationHistory.push({
-                role: "user",
-                content: message
-            });
-
-            showTypingIndicator();
-
+            const input = document.getElementById('userInput').value;
+            appendMessage(true, input);
+            
             try {
-                const response = await fetch(`${BASE_URL}/chat/completions`, {
+                const response = await fetch('/chat', {
                     method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${API_KEY}`,
-                        'Content-Type': 'application/json'
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('sessionToken')}`
                     },
-                    body: JSON.stringify({
-                        model: MODEL,
-                        messages: conversationHistory,
-                        stream: false,
-                        temperature: 0.7, // Add some randomness to responses
-                        max_tokens: 2000  // Allow for longer responses
-                    })
+                    body: JSON.stringify({ message: input })
                 });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
+                
                 const data = await response.json();
-                const botResponse = data.choices[0]?.message?.content || 
-                                  'Sorry, I encountered an error processing your request. Please try again.';
-
-                // Add bot response to chat and conversation history
-                hideTypingIndicator();
-                addMessage(botResponse, false);
-                conversationHistory.push({
-                    role: "assistant",
-                    content: botResponse
-                });
-
-                // Clear any previous error messages
-                errorMessage.style.display = 'none';
+                appendMessage(false, data.reply);
             } catch (error) {
-                console.error('Error:', error);
-                hideTypingIndicator();
-                addMessage('Sorry, there was an error processing your message. Please try again.', false);
-                errorMessage.textContent = error.message;
-                errorMessage.style.display = 'block';
-                setTimeout(() => {
-                    errorMessage.style.display = 'none';
-                }, 5000);
-            } finally {
-                isProcessing = false;
-                sendButton.disabled = false;
-                messageInput.focus();
+                appendMessage(false, '**Error:** Could not connect to the API');
             }
+            
+            document.getElementById('userInput').value = '';
         }
-
-        // Event listeners
-        sendButton.addEventListener('click', sendMessage);
-        messageInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
-            }
-        });
-
-        // Handle window close or refresh
-        window.onbeforeunload = function() {
-            localStorage.removeItem('chatHistory');
-        };
-
-        // Initial focus
-        messageInput.focus();
     </script>
 </body>
 </html>
