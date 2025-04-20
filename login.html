@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>HackGPT - Activate Access</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="auth-container">
+        <h2>Activate Your Access</h2>
+        <form id="tokenForm">
+            <div class="input-group">
+                <input type="text" id="accessToken" name="accessToken" placeholder="Enter access code" required>
+            </div>
+            <button type="submit">Verify Code</button>
+        </form>
+        <div id="tokenMessage"></div>
+    </div>
+    <script>
+        document.getElementById('tokenForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const token = document.getElementById('accessToken').value;
+            const response = await fetch('/validate-token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token })
+            });
+            const result = await response.json();
+            if (result.valid) {
+                window.location.href = `/register?token=${token}&days=${result.days}`;
+            } else {
+                document.getElementById('tokenMessage').textContent = 'Invalid or expired access code';
+            }
+        });
+    </script>
+</body>
+</html>
