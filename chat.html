@@ -1,61 +1,102 @@
-<!-- chat.html -->
 <!DOCTYPE html>
 <html>
 <head>
     <title>HackGPT - Chat</title>
     <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.0/styles/default.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        .chat-container {
+            max-width: 800px;
+            margin: 20px auto;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 10px;
+            height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .chat-input {
+            display: flex;
+            padding: 10px;
+        }
+        #messageInput {
+            flex: 1;
+            padding: 5px;
+            margin-right: 10px;
+        }
+        .message {
+            margin: 10px 0;
+        }
+        .user-message {
+            color: blue;
+        }
+        .bot-message {
+            color: green;
+        }
+    </style>
 </head>
 <body>
     <div class="chat-container">
-        <div id="chatOutput" class="chat-output"></div>
-        <div class="input-area">
-            <textarea id="userInput" placeholder="Type your message..."></textarea>
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="chat-input">
+            <input type="text" id="messageInput" placeholder="Type your message...">
             <button onclick="sendMessage()">Send</button>
         </div>
     </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.0/highlight.min.js"></script>
-    
     <script>
-        // Markdown configuration
-        marked.setOptions({
-            highlight: (code, lang) => hljs.highlightAuto(code).value,
-            breaks: true
-        });
-
-        // Modified chat functions
-        function appendMessage(isUser, message) {
-            const formatted = marked.parse(message);
-            const msgDiv = document.createElement('div');
-            msgDiv.className = isUser ? 'user-message' : 'bot-message';
-            msgDiv.innerHTML = formatted;
-            document.getElementById('chatOutput').appendChild(msgDiv);
+        // Validate token on page load
+        const token = localStorage.getItem('accessToken');
+        const expiry = localStorage.getItem('expiry');
+        if (!token || !expiry || new Date(expiry) < new Date()) {
+            window.location.href = 'login.html';
         }
 
         async function sendMessage() {
-            const input = document.getElementById('userInput').value;
-            appendMessage(true, input);
-            
-            try {
-                const response = await fetch('/chat', {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${localStorage.getItem('sessionToken')}`
-                    },
-                    body: JSON.stringify({ message: input })
-                });
-                
-                const data = await response.json();
-                appendMessage(false, data.reply);
-            } catch (error) {
-                appendMessage(false, '**Error:** Could not connect to the API');
-            }
-            
-            document.getElementById('userInput').value = '';
+            const input = document.getElementById('messageInput');
+            const chatMessages = document.getElementById('chatMessages');
+            const userMessage = input.value.trim();
+            if (!userMessage) return;
+
+            // Display user message
+            const userDiv = document.createElement('div');
+            userDiv.className = 'message user-message';
+            userDiv.textContent = `You: ${userMessage}`;
+            chatMessages.appendChild(userDiv);
+
+            // Clear input
+            input.value = '';
+
+            // Call Nano-GPT API directly
+            const response = await fetch('https://nano-gpt.com/api/v1/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer 02684c24-d968-46df-b2a6-fc92d92b4c41`,
+                },
+                body: JSON.stringify({ model: 'DeepSeek-R1', input: userMessage }),
+            });
+            const result = await response.json();
+
+            // Display bot response
+            const botDiv = document.createElement('div');
+            botDiv.className = 'message bot-message';
+            botDiv.innerHTML = `Bot: ${marked.parse(result.output || 'No response')}`;
+            chatMessages.appendChild(botDiv);
+
+            // Scroll to bottom
+            chatMessages.scrollTop = chatMessages.scrollHeight;
         }
+
+        // Enable sending message with Enter key
+        document.getElementById('messageInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
     </script>
 </body>
 </html>
